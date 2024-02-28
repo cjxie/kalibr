@@ -6,6 +6,8 @@
 #include <sm/kinematics/UncertainTransformation.hpp>
 #include <sm/kinematics/transformations.hpp>
 #include <sm/serialization_macros.hpp>
+#include <iostream>
+
 
 
 namespace sm {
@@ -25,7 +27,7 @@ namespace sm {
       _q_a_b( r2quat(T_a_b.topLeftCorner<3,3>()) ),
       _t_a_b_a( T_a_b.topRightCorner<3,1>() )
     {
-
+      // std::cout<< "transformation: \n "<< T_a_b.topLeftCorner<3,3>()<< std::endl;
     }
 
     Transformation::Transformation(const Eigen::Vector4d & q_a_b, const Eigen::Vector3d & t_a_b_a) :

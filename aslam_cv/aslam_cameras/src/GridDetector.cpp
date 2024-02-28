@@ -123,7 +123,7 @@ bool GridDetector::findTarget(const cv::Mat & image, const aslam::Time & stamp,
   if (success) {
     // also estimate the transformation:
     success = _geometry->estimateTransformation(outObservation, trafo);
-
+    // std::cout<< "trafo: " << trafo.T3x4()<< std::endl;
     if (success)
       outObservation.set_T_t_c(trafo);
     else
@@ -138,7 +138,7 @@ bool GridDetector::findTarget(const cv::Mat & image, const aslam::Time & stamp,
     corners_detected.clear();
     outObservation.getCornerReprojection(_geometry, corners_reproj);
     unsigned int numCorners = outObservation.getCornersImageFrame(corners_detected);
-
+    // std::cout<< "cntCorners: "<< numCorners << std::endl;
     //calculate error norm
     reprojection_errors_norm = Eigen::MatrixXd::Zero(numCorners,1);
     for(unsigned int i=0; i<numCorners; i++ )
@@ -175,13 +175,14 @@ bool GridDetector::findTarget(const cv::Mat & image, const aslam::Time & stamp,
     //disable outlier corners
     std::vector<unsigned int> cornerIdx;
     outObservation.getCornersIdx(cornerIdx);
-
+    // SM_DEBUG_STREAM("filterCornerMinReprojError: " << _options.filterCornerMinReprojError);
     unsigned int removeCount = 0;
     for(unsigned int i=0; i<corners_detected.size(); i++ )
     {
       if( reprojection_errors_norm(i,0) > mean + _options.filterCornerSigmaThreshold * std &&
           reprojection_errors_norm(i,0) > _options.filterCornerMinReprojError)
       {
+        // std::cout<< "Corner " << i <<std::endl;
         outObservation.removeImagePoint( cornerIdx[i] );
         removeCount++;
         SM_DEBUG_STREAM("removed target point with reprojection error of " << reprojection_errors_norm(i,0) << " (mean: " << mean << ", std: " << std << ")\n";);
@@ -189,9 +190,21 @@ bool GridDetector::findTarget(const cv::Mat & image, const aslam::Time & stamp,
     }
 
     if(removeCount>0)
-      SM_DEBUG_STREAM("removed " << removeCount << " of " << reprojection_errors_norm.rows() << " calibration target corner outliers\n";);
-  }
 
+      SM_DEBUG_STREAM("removed " << removeCount << " of " << reprojection_errors_norm.rows() << " calibration target corner outliers\n";);
+
+    if (outObservation.hasSuccessfulObservation())
+      // SM_DEBUG_STREAM("Successful observation with at least one corner detected";);
+      success = true;
+    else
+    {
+      outObservation.clear_T_t_c();
+      SM_DEBUG_STREAM("removed image";);
+      success = false;
+    }
+
+  }
+  
 
   // show plot of reprojected corners
   if (_options.plotCornerReprojection) {

@@ -79,7 +79,7 @@ class IccCamera():
             options.normalizeImage = True
             options.useAdaptiveThreshold = True        
             options.performFastCheck = False
-            options.windowWidth = 5
+            options.windowWidth = 11
             options.showExtractionVideo = showExtraction
             grid = acv.GridCalibrationTargetCheckerboard(targetParams['targetRows'], 
                                                             targetParams['targetCols'], 
@@ -112,7 +112,7 @@ class IccCamera():
         options.plotCornerReprojection = showReproj
         options.filterCornerOutliers = True
         #options.filterCornerSigmaThreshold = 2.0
-        #options.filterCornerMinReprojError = 0.2
+        options.filterCornerMinReprojError = 0.5
         self.detector = acv.GridDetector(self.camera.geometry, grid, options)        
 
     def findOrientationPriorCameraToImu(self, imu):

@@ -59,6 +59,18 @@ class RadialTangentialDistortion {
    * @param y The point in the normalized image plane. After the function, this point is distorted.
    */
   template<typename DERIVED_Y>
+  void distort_(const Eigen::MatrixBase<DERIVED_Y> & y, Eigen::Vector2d & d_u) const;
+
+  template<typename DERIVED_Y, typename DERIVED_JY>
+  void distort_(const Eigen::MatrixBase<DERIVED_Y> & y, Eigen::Vector2d & d_u, const Eigen::MatrixBase<DERIVED_JY> & outJy) const;
+
+
+  /** 
+   * \brief Apply distortion to a point in the normalized image plane
+   * 
+   * @param y The point in the normalized image plane. After the function, this point is distorted.
+   */
+  template<typename DERIVED_Y>
   void distort(const Eigen::MatrixBase<DERIVED_Y> & y) const;
 
   /** 

@@ -110,6 +110,10 @@ class GridCalibrationTargetObservation {
     _T_t_c = T_t_c;
   };
 
+  void clear_T_t_c() {
+    _T_t_c_isSet = false;
+  };
+
   /// \brief get the time of the observation
   aslam::Time time() const {
     return _stamp;

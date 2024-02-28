@@ -74,30 +74,69 @@ void RadialTangentialDistortion::undistort(
       const_cast<Eigen::MatrixBase<DERIVED> &>(yconst);
   y.derived().resize(2);
 
-  Eigen::Vector2d ybar = y;
-  const int n = 5;
-  Eigen::Matrix2d F;
+  Eigen::Vector2d p_u = y;
+//   const int n = 5;
+    int n = 8;
+    Eigen::Vector2d d_u;
+    distort_(p_u, d_u);
 
-  Eigen::Vector2d y_tmp;
+    double mx_u, my_u;
+    double mx_d = y(0);
+    double my_d = y(1); 
+    // Approximate value
+    mx_u = mx_d - d_u(0);
+    my_u = my_d - d_u(1);
 
-  for (int i = 0; i < n; i++) {
+    for (int i = 1; i < n; ++i)
+    {
+        distort_(Eigen::Vector2d(mx_u, my_u), d_u);
+        mx_u = mx_d - d_u(0);
+        my_u = my_d - d_u(1);
+    }
 
-    y_tmp = ybar;
+    y = Eigen::Vector2d(mx_u, my_u);
+//   Eigen::Matrix2d F;
 
-    distort(y_tmp, F);
+//   Eigen::Vector2d y_tmp;
 
-    Eigen::Vector2d e(y - y_tmp);
-    Eigen::Vector2d du = (F.transpose() * F).inverse() * F.transpose() * e;
+//   for (int i = 0; i < n; i++) {
 
-    ybar += du;
+//     y_tmp = ybar;
 
-    if (e.dot(e) < 1e-15)
-      break;
+//     distort(y_tmp, F);
 
-  }
-  y = ybar;
+//     Eigen::Vector2d e(y - y_tmp);
+//     Eigen::Vector2d du = (F.transpose() * F).inverse() * F.transpose() * e;
+
+//     ybar += du;
+
+    // if (e.dot(e) < 1e-15)
+    //   break;
+
+//   }
+//   y = ybar;
 
 }
+
+template<typename DERIVED_Y>
+void RadialTangentialDistortion::distort_(const Eigen::MatrixBase<DERIVED_Y> & y, Eigen::Vector2d & d_u) const
+{
+    double mx2_u, my2_u, mxy_u, rho2_u, rad_dist_u;
+
+    mx2_u = y(0) * y(0);
+    my2_u = y(1) * y(1);
+    mxy_u = y(0) * y(1);
+    rho2_u = mx2_u + my2_u;
+    rad_dist_u = _k1 * rho2_u + _k2 * rho2_u * rho2_u;
+    d_u << y(0) * rad_dist_u + 2.0 * _p1 * mxy_u + _p2 * (rho2_u + 2.0 * mx2_u),
+        y(1)* rad_dist_u + 2.0 * _p2 * mxy_u + _p1 * (rho2_u + 2.0 * my2_u);
+}
+
+template<typename DERIVED_Y, typename DERIVED_JY>
+  void RadialTangentialDistortion::distort_(const Eigen::MatrixBase<DERIVED_Y> & y, Eigen::Vector2d & d_u, const Eigen::MatrixBase<DERIVED_JY> & outJy) const
+  {
+    
+  }
 
 template<typename DERIVED, typename DERIVED_JY>
 void RadialTangentialDistortion::undistort(

@@ -1,5 +1,6 @@
 #include <vector>
 #include <opencv2/core/core.hpp>
+#include <iostream>
 #include <aslam/cameras/GridCalibrationTargetObservation.hpp>
 
 namespace aslam {
@@ -109,12 +110,13 @@ unsigned int GridCalibrationTargetObservation::getCornerReprojection(const boost
   for (unsigned int i = 0; i < numCorners; i++) {
     //reproject
     Eigen::Vector3d p(targetPoints[i].x, targetPoints[i].y, targetPoints[i].z);
+    // std::cout<<"T_t_c: " << T_t_c().T() <<std::endl;
     Eigen::VectorXd pReproj = T_t_c().inverse() * p;
     Eigen::VectorXd pReprojImg;
-
+    // std::cout<< "image point:" <<_points.row(i) << " target point:"<< p.transpose()<<std::endl;
     //handle camera geometry
     cameraGeometry->vsEuclideanToKeypoint(pReproj, pReprojImg);
-
+    // std::cout<< "object in camera frame: " <<pReproj.transpose() << " pReprojImg: "<< pReprojImg.transpose()<<std::endl;
     //store points
     cv::Point2f cornerReproj(pReprojImg(0), pReprojImg(1));
     outPointReproj.push_back(cornerReproj);
@@ -151,7 +153,7 @@ void GridCalibrationTargetObservation::updateImagePoint(
   SM_ASSERT_LT(
       Exception, i, _success.size(),
       "Index out of bounds. The list has " << _success.size() << " points");
-  //SM_DEBUG_STREAM("Updating point " << i << ". Point matrix: (" << _points.rows() << ", " << _points.cols() << ")");
+  // SM_DEBUG_STREAM("Updating point " << i << ". Point matrix: (" << _points.rows() << ", " << _points.cols() << ")");
   _points.row(i) = point;
   _success[i] = true;
 }
@@ -199,6 +201,7 @@ bool GridCalibrationTargetObservation::hasSuccessfulObservation() const {
       return true;
     }
   }
+  std::cout<<"Failed observation"<< std::endl;
   return false;
 }
 

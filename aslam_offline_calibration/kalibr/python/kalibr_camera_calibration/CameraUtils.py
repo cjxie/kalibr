@@ -563,6 +563,7 @@ def plotTrajectory(cself, fno=1, clearFigure=True, title=""):
     for view in views:
         # get this view in target frame
         T_target_camera = sm.Transformation(view.dv_T_target_camera.T())
+        print(f"Rotation matrix:{T_target_camera.C()} \n  Translation vector: {T_target_camera.t()} \n" )
         sm.plotCoordinateFrame(a3d, T_target_camera.T(), size=size)
         # record min max
         traj_max = np.maximum(traj_max, T_target_camera.t())

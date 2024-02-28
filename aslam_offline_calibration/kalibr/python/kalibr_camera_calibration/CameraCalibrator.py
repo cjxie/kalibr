@@ -122,7 +122,9 @@ class TargetDetector(object):
         options = acv.GridDetectorOptions() 
         options.imageStepping = showOneStep
         options.plotCornerReprojection = showReproj
-        options.filterCornerOutliers = False
+        options.filterCornerOutliers = True
+        options.filterCornerMinReprojError = 0.5
+        # options.filterCornerOutliers = True
         
         self.detector = acv.GridDetector(cameraGeometry, self.grid, options)
 

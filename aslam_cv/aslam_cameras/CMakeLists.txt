@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(Boost REQUIRED COMPONENTS system serialization filesystem)
 find_package(Eigen3 REQUIRED)
+find_package(OpenCV 4.8 REQUIRED PATHS ${CMAKE_CURRENT_SOURCE_DIR}/external/opencv-4.8.0 NO_DEFAULT_PATH)
 
 catkin_package(
   LIBRARIES ${PROJECT_NAME}
@@ -24,7 +25,7 @@ catkin_package(
   DEPENDS Boost
 )
 
-include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${EIGEN3_INCLUDE_DIR} ${Boost_INCLUDE_DIRS} ${OPENCV_INCLUDE_DIRS}) # 
 
 add_library(${PROJECT_NAME} 
   src/CameraGeometryBase.cpp
@@ -49,7 +50,7 @@ add_library(${PROJECT_NAME}
   src/Landmark.cpp
   src/Image.cpp
 )
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBS}) #
 target_compile_options(${PROJECT_NAME} PUBLIC "-Wno-deprecated-copy") # TODO: Fix...
 
 if(CATKIN_ENABLE_TESTING)

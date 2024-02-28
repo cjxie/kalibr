@@ -86,8 +86,8 @@ bool OmniProjection<DISTORTION_T>::euclideanToKeypoint(
   double d = p.norm();
 
   // Check if point will lead to a valid projection
-  if (p[2] <= -(_fov_parameter * d))
-    return false;
+  // if (p[2] <= -(_fov_parameter * d))
+  //   return false;
 
   double rz = 1.0 / (p[2] + _xi * d);
   outKeypoint[0] = p[0] * rz;
@@ -140,8 +140,8 @@ bool OmniProjection<DISTORTION_T>::euclideanToKeypoint(
   double d = p.norm();
 
   // Check if point will lead to a valid projection
-  if (p[2] <= -(_fov_parameter * d))
-    return false;
+  // if (p[2] <= -(_fov_parameter * d))
+  //   return false;
 
   // project the point
   double rz = 1.0 / (p[2] + _xi * d);
@@ -246,17 +246,20 @@ bool OmniProjection<DISTORTION_T>::keypointToEuclidean(
   // Unproject...
   outPoint[0] = _recip_fu * (keypoint[0] - _cu);
   outPoint[1] = _recip_fv * (keypoint[1] - _cv);
+             
+  // SM_DEBUG_STREAM("camera params (xi,1/fu,1/fv,cu/fu,cv/fv):" << xi() << ", " << _recip_fu
+  //            << ", " << _recip_fv << ", " << cu()*_recip_fu << ", " << cv()*_recip_fv);
 
   // Re-distort
+  // SM_DEBUG_STREAM(outPoint.transpose());
   _distortion.undistort(outPoint.derived().template head<2>());
-
+  // SM_DEBUG_STREAM(outPoint.transpose());
   double rho2_d = outPoint[0] * outPoint[0] + outPoint[1] * outPoint[1];
 
   if (!isUndistortedKeypointValid(rho2_d))
     return false;
 
-  outPoint[2] = 1
-      - _xi * (rho2_d + 1) / (_xi + sqrt(1 + (1 - _xi * _xi) * rho2_d));
+  outPoint[2] = 1.0 - _xi * (rho2_d + 1.0) / (_xi + sqrt(1.0 + (1.0 - _xi * _xi) * rho2_d));
 
   return true;
 
@@ -583,7 +586,8 @@ bool OmniProjection<DISTORTION_T>::isValid(
 template<typename DISTORTION_T>
 bool OmniProjection<DISTORTION_T>::isUndistortedKeypointValid(
     const double rho2_d) const {
-  return xi() <= 1.0 || rho2_d <= _one_over_xixi_m_1;
+  // return xi() <= 1.0 || rho2_d <= _one_over_xixi_m_1;
+  return true;
 }
 
 template<typename DISTORTION_T>
@@ -762,6 +766,7 @@ bool OmniProjection<DISTORTION_T>::initializeIntrinsics(const std::vector<GridCa
         Eigen::Vector3d gridPoint;
 
         if (obs.imageGridPoint(r, c, imagePoint)) {
+          SM_DEBUG_STREAM("r: " <<r << "c: "<< c << "imagePoint:" << imagePoint.transpose());
           double u = imagePoint[0] - _cu;
           double v = imagePoint[1] - _cv;
           P.at<double>(count, 0) = u;
@@ -791,23 +796,24 @@ bool OmniProjection<DISTORTION_T>::initializeIntrinsics(const std::vector<GridCa
         double nx = C.at<double>(0) * d;
         double ny = C.at<double>(1) * d;
         if (hypot(nx, ny) > 0.95) {
-          //SM_DEBUG_STREAM("Skipping a radial line on row " << r);
+          SM_DEBUG_STREAM("Skipping a radial line on row " << r);
           continue;
         }
 
         //calculate the focal length estimate
         double nz = sqrt(1.0 - square(nx) - square(ny));
-        double gamma = fabs(C.at<double>(2) * d / nz);
+        // double gamma = fabs(C.at<double>(2) * d / nz);
+        double gamma = sqrt(C.at<double>(2) / C.at<double>(3));
 
         //calculate the reprojection error using this estimate
-        //SM_DEBUG_STREAM("Testing a focal length estimate of " << gamma);
+        SM_DEBUG_STREAM("Testing a focal length estimate of " << gamma);
         _fu = gamma;
         _fv = gamma;
         updateTemporaries();
 
         sm::kinematics::Transformation T_target_camera;
         if (!estimateTransformation(obs, T_target_camera)) {
-          //SM_DEBUG_STREAM("Skipping row " << r << " as the transformation estimation failed.");
+          SM_DEBUG_STREAM("Skipping row " << r << " as the transformation estimation failed.");
           continue;
         }
 
@@ -819,7 +825,7 @@ bool OmniProjection<DISTORTION_T>::initializeIntrinsics(const std::vector<GridCa
 
           if (avgReprojErr < minReprojErr)
           {
-            //SM_DEBUG_STREAM("Row " << r << " produced the new best estimate: " << avgReprojErr << " < " << minReprojErr);
+            SM_DEBUG_STREAM("Row " << r << " produced the new best estimate: " << avgReprojErr << " < " << minReprojErr);
             minReprojErr = avgReprojErr;
             gamma0 = gamma;
             success = true;
@@ -827,7 +833,7 @@ bool OmniProjection<DISTORTION_T>::initializeIntrinsics(const std::vector<GridCa
         }
       }  // If this observation has enough valid corners
       else {
-        //SM_DEBUG_STREAM("Skipping row " << r << " because it only had " << count << " corners. Minimum: " << MIN_CORNERS);
+        SM_DEBUG_STREAM("Skipping row " << r << " because it only had " << count << " corners. Minimum: " << MIN_CORNERS);
       }
     }  // For each row in the image.
   } //For each image
@@ -880,25 +886,29 @@ bool OmniProjection<DISTORTION_T>::estimateTransformation(
   obs.getCornersTargetFrame(Ps);
 
   // Convert all target corners to a fakey pinhole view.
+  Eigen::Vector3d targetPoint;
+  Eigen::Vector2d imagePoint;
   size_t count = 0;
   for (size_t i = 0; i < Ms.size(); ++i) {
-    Eigen::Vector3d targetPoint(Ps[i].x, Ps[i].y, Ps[i].z);
-    Eigen::Vector2d imagePoint(Ms[i].x, Ms[i].y);
+    targetPoint << Ps[i].x, Ps[i].y, Ps[i].z;
+    imagePoint << Ms[i].x, Ms[i].y;
     Eigen::Vector3d backProjection;
 
-    if (keypointToEuclidean(imagePoint, backProjection)
-        && backProjection.normalized()[2] > std::cos(80.0*M_PI/180.0)) {
+    if (keypointToEuclidean(imagePoint, backProjection)) {
       double x = backProjection[0];
       double y = backProjection[1];
       double z = backProjection[2];
-      Ps.at(count).x = targetPoint[0];
-      Ps.at(count).y = targetPoint[1];
-      Ps.at(count).z = targetPoint[2];
+      // Ps.at(i).x = targetPoint[0];
+      // Ps.at(i).y = targetPoint[1];
+      // Ps.at(i).z = targetPoint[2];
+      // std::cout<<"object point: "<<Ps[i].x<<", "<<Ps[i].y<<", "<<Ps[i].z << " P: "<<backProjection.transpose() <<std::endl;
+      // std::cout<<"image point: "<< imagePoint.transpose() <<std::endl;
 
-      Ms.at(count).x = x / z;
-      Ms.at(count).y = y / z;
-      ++count;
-    } else {
+      Ms.at(i).x = x / z;
+      Ms.at(i).y = y / z;
+      // ++count;
+    } 
+    // else {
 //      SM_DEBUG_STREAM(
 //          "Skipping point " << i << ", point was observed: " << imagePoint
 //              << ", projection success: "
@@ -908,11 +918,11 @@ bool OmniProjection<DISTORTION_T>::estimateTransformation(
 //              << ", backProjection: " << backProjection.transpose()
 //              << ", camera params (xi,fu,fv,cu,cv):" << xi() << ", " << fu()
 //              << ", " << fv() << ", " << cu() << ", " << cv());
-    }
+    // }
   }
 
-  Ps.resize(count);
-  Ms.resize(count);
+  // Ps.resize(count);
+  // Ms.resize(count);
 
   std::vector<double> distCoeffs(4, 0.0);
 
@@ -928,20 +938,94 @@ bool OmniProjection<DISTORTION_T>::estimateTransformation(
   // Call the OpenCV pnp function.
 //  SM_DEBUG_STREAM("Calling solvePnP with " << Ps.size() << " world points and "
 //                  << Ms.size() << " image points");
-  cv::solvePnP(Ps, Ms, cv::Mat::eye(3, 3, CV_64F), distCoeffs, rvec, tvec);
+  // cv::solvePnP(Ps, Ms, cv::Mat::eye(3, 3, CV_64F), distCoeffs, rvec, tvec);
+  cv::solvePnPRansac(Ps, Ms, cv::Mat::eye(3, 3, CV_64F), distCoeffs,rvec, tvec, false, 100,  8.0, 0.99, cv::noArray(), cv::SOLVEPNP_IPPE);
+
+  // std::vector<cv::Mat> rvecs;
+  // std::vector<cv::Mat> tvecs;
+  // cv::solvePnPGeneric(Ps, Ms, cv::Mat::eye(3, 3, CV_64F), distCoeffs, rvecs, tvecs, false, cv::SOLVEPNP_IPPE);
+
 
   // convert the rvec/tvec to a transformation
-  cv::Mat C_camera_model = cv::Mat::eye(3, 3, CV_64F);
+  cv::Mat R0;
+  Eigen::MatrixXd R(3, 3);
+
+  // mutilple rvec & tvec
+  //   for ( size_t i =0; i < rvecs.size(); i++)
+  // {
+  //   cv::Rodrigues(rvecs.at(i), R0);
+  //   R << R0.at<double>(0, 0), R0.at<double>(0, 1), R0.at<double>(0, 2),
+  //     R0.at<double>(1, 0), R0.at<double>(1, 1), R0.at<double>(1, 2),
+  //     R0.at<double>(2, 0), R0.at<double>(2, 1), R0.at<double>(2, 2);
+    
+  //   tvec = tvecs.at(i);
+  //   SM_DEBUG_STREAM( "R: \n" << R << "\ntvec: " << -tvec.at<double>(0,0) << " " << -tvec.at<double>(1,0)<< " " << -tvec.at<double>(2,0));
+  // }
+
+  cv::Rodrigues(rvec, R0);
+  R << R0.at<double>(0, 0), R0.at<double>(0, 1), R0.at<double>(0, 2),
+      R0.at<double>(1, 0), R0.at<double>(1, 1), R0.at<double>(1, 2),
+      R0.at<double>(2, 0), R0.at<double>(2, 1), R0.at<double>(2, 2);
+
   Eigen::Matrix4d T_camera_model = Eigen::Matrix4d::Identity();
-  cv::Rodrigues(rvec, C_camera_model);
+  T_camera_model.block<3,3>(0,0) = R;
   for (int r = 0; r < 3; ++r) {
     T_camera_model(r, 3) = tvec.at<double>(r, 0);
-    for (int c = 0; c < 3; ++c) {
-      T_camera_model(r, c) = C_camera_model.at<double>(r, c);
-    }
   }
 
+  // std::cout<< "T_cam_w: \n" << T_camera_model <<std::endl;
+  out_T_t_c.set(T_camera_model);
+  // Test the reprojection error and flip the Rotation matrix and translation vector
+
+  size_t i = Ps.size()-1;
+  Eigen::Vector2d y, yhat;
+  y = imagePoint;
+  euclideanToKeypoint(out_T_t_c * targetPoint, yhat);
+
+  double error = (y - yhat).norm();
+  if (error > 100)
+  {
+    SM_DEBUG_STREAM("Flip the rotation matrix");
+
+    Eigen::MatrixXd R_flip(3, 3);
+    R_flip << -1, 0, 0, 0, -1, 0, 0, 0, 1;
+    R = R * R_flip ;
+
+    tvec.at<double>(0,0) *= -1;
+    tvec.at<double>(1,0) *= -1;
+    tvec.at<double>(2,0) *= -1;  
+  }
+
+  
+  // Eigen::Vector3d t;
+  // t << tvec.at<double>(0,0), -tvec.at<double>(1,0), -tvec.at<double>(2,0);
+  // if (R(2,1) < 0)
+  // {
+  //   Eigen::MatrixXd R_flip(3, 3);
+  //   R_flip << -1, 0, 0, 0, -1, 0, 0, 0, 1;
+  //   R = R_flip * R;
+
+  //   tvec.at<double>(0,0) *= -1;
+  //   tvec.at<double>(1,0) *= -1;
+  //   tvec.at<double>(2,0) *= -1;  
+  // }
+  // else
+  // {
+  //   return false;
+  // }
+
+  T_camera_model.block<3,3>(0,0) = R;
+  // T_camera_model.block<3,1>(0,3) = t;
+  for (int r = 0; r < 3; ++r) {
+    T_camera_model(r, 3) = tvec.at<double>(r, 0);
+  }
+
+  // T_camera_model = T_camera_model;
+  // T_camera_model(3,3) = 1;
+  // std::cout<< "T_cam_w: \n" << T_camera_model <<std::endl;
+  // std::cout<< "T_w_cam: \n"<< T_camera_model.inverse() <<std::endl;
   out_T_t_c.set(T_camera_model.inverse());
+  // std::cout<< "out_T_t_c: \n" << out_T_t_c.T() << std::endl; 
   return true;
 }
 

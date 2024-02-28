@@ -70,8 +70,8 @@ void GridCalibrationTargetCheckerboard::initialize()
 void GridCalibrationTargetCheckerboard::createGridPoints() {
   for (unsigned int r = 0; r < _rows; r++)
     for (unsigned int c = 0; c < _cols; c++)
-      _points.row(gridCoordinatesToPoint(r, c)) = Eigen::Matrix<double, 1, 3>(
-          _rowSpacingMeters * r, _colSpacingMeters * c, 0.0);
+      _points.row(cols() *r + c) = Eigen::Matrix<double, 1, 3>(
+          _rowSpacingMeters * c, _colSpacingMeters * r, 0.0);
 }
 
 /// \brief extract the calibration target points from an image and write to an observation
@@ -106,7 +106,7 @@ bool GridCalibrationTargetCheckerboard::computeObservation(const cv::Mat & image
     //image with refined (blue) and raw corners (red)
     cv::Mat imageCopy1 = image.clone();
     cv::cvtColor(imageCopy1, imageCopy1, cv::COLOR_GRAY2RGB);
-    cv::drawChessboardCorners(imageCopy1, cv::Size(rows(), cols()), centers,
+    cv::drawChessboardCorners(imageCopy1, patternSize, centers,
                               true);
 
     // write error msg
@@ -130,8 +130,12 @@ bool GridCalibrationTargetCheckerboard::computeObservation(const cv::Mat & image
   //convert to eigen for output
   outImagePoints.resize(size(), 2);
   for (unsigned int i = 0; i < size(); i++)
-    outImagePoints.row(i) = Eigen::Matrix<double, 1, 2>(
-        centers.row(i).at<float>(0), centers.row(i).at<float>(1));
+  {
+        outImagePoints.row(i) = Eigen::Matrix<double, 1, 2>(
+          centers.row(i).at<float>(0), centers.row(i).at<float>(1));
+        // std::cout <<"corner: " << i << " image point: " << outImagePoints.row(i).transpose() << " obs point: " << _points.row(i) << std::endl;
+  }
+
 
   return success;
 }
@@ -140,6 +144,7 @@ bool GridCalibrationTargetCheckerboard::computeObservation(const cv::Mat & image
 
 //export explicit instantions for all included archives
 #include <sm/boost/serialization.hpp>
+#include <iostream>
 #include <boost/serialization/export.hpp>
 BOOST_CLASS_EXPORT_IMPLEMENT(aslam::cameras::GridCalibrationTargetCheckerboard);
 BOOST_CLASS_EXPORT_IMPLEMENT(aslam::cameras::GridCalibrationTargetCheckerboard::CheckerboardOptions);

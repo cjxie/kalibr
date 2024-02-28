@@ -188,6 +188,10 @@ def main():
             if not cam.initGeometryFromObservations(observations):
                 raise RuntimeError("Could not initialize the intrinsics for camera with topic: {0}. Try to use --verbose and check whether the calibration target extraction is successful.".format(topic))
             
+            # if modelName == "omni-radtan": 
+                # cam.geometry.projection().setParameters(np.array([1.5225025077908436e+00,6.9476089184660282e+02, 6.9068029354908776e+02, 9.7490699030352562e+02, 5.8065903916334992e+02]))
+                # cam.geometry.projection().distortion().setParameters(np.array([-3.4410410700670163e-01, 4.6958958816455992e-01, -4.6458616998247830e-04, -1.7270481032095649e-03]))
+            
             print("\tProjection initialized to: %s" % cam.geometry.projection().getParameters().flatten())
             print("\tDistortion initialized to: %s" % cam.geometry.projection().distortion().getParameters().flatten())
             
@@ -275,7 +279,7 @@ def main():
                 T_tc_guess = graph.getTargetPoseGuess(timestamp, cameraList, est_baselines)
                                
                 success = calibrator.addTargetView(timestamp, obs_tuple, T_tc_guess)
-                
+                print("success: {} ".format(success))
                 #display process
                 if (verbose or (view_id % 25) == 0) and calibrator.estimator.getNumBatches()>0 and view_id>1:
                     print("")
